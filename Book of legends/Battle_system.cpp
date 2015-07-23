@@ -271,7 +271,7 @@ int Attack::initialize_ability(Unit & caster, Unit & target, int turn)
 
 //Class Battle methods begin here:
 
-Battle::Battle()
+Battle::Battle(Party & party, Opponents & opponents):party_in_battle(&party), opponents_in_battle(&opponents)
 {
 	srand(time(NULL)); //		Seed for random generation in this battle
 }
@@ -403,4 +403,22 @@ int Battle::process_unit()
 		return special_situation;
 }
 
+int Battle::go()
+{
+	int result;
+	while(1)
+	{
+		result = (*this).process_situation();
+		if(result == 0) //		If Party is dead
+			return 0;
+		if(result == 2) //		If Opponents are dead
+			return 1;
+		while(!battle_queue.empty())
+		{
+			result = this->process_unit();
+			if(result == 2) //	If Ability "Retreat" was used
+				return 2;
+		}
+	}
+}
 //Class Battle methods end here.

@@ -241,6 +241,7 @@ private:
 
 	int return_value; //							Uses to process special situations, can be changed in constructor ONLY. Zero by default
 				   	  //							If return value is equal to 1, this abillity is Attack
+					  //							If return value is equal to 2, this ability is Retreat
 };
 
 class Attack:public Ability_Active
@@ -268,6 +269,7 @@ private:
 class Party
 {
 public:
+	void modify_gold(int); //						Adds argument to current amount of gold
 	vector <Hero> creatures;//						List of heroes in the party
 private:	
 	double alignment; //							Average alignment of a party
@@ -292,17 +294,18 @@ private:
 class Battle
 {
 public:
-	Battle();
+	Battle(Party&, Opponents&);
 	int process_situation(); //						Check whether someone is dead and add units to battle queue if there are none
 							 //						Returns 0 if party is dead, 2 if party wins, 1 if none of this
 	int process_unit(); //							Processing top of battle queue while it has action points
 							 //						Returns the code of special event, 0 - nothing special happened
+	int go(); //									Is used to process battle, main method. 
+			//										Returns the result of battle: 1 - party won, 0 - party died, 2 - party fled
 private:
 	Party *party_in_battle; //						Pointer to a party of adventurers
 	Opponents *opponents_in_battle; //				Pointer to a party of enemies
 	queue <Unit*> battle_queue; //					Queue of acting units
-	vector <Ability_Active> *current_abilities;//	Abilities of a selected unit	
-	short selected_unit_AP; //						Current action points of selected unit
+	vector <Ability_Active&> *current_abilities;//	Abilities of a selected unit	
 };
 
 #endif 

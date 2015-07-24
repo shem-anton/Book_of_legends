@@ -338,19 +338,19 @@ public:
 		for(auto iter = target.applied_abilities.begin(); iter != target.applied_abilities.end(); ++iter)
 			if(value)
 			{
-				if(iter->is_debuff()) // If is a debuff
+				if((*iter)->is_debuff()) // If is a debuff
 				{
-					taken_buffs.push_back(*iter); //		Store it in taken_buffs
-					iter->remove_ability(target); //		Apply remove_ability
+					taken_buffs.push_back(*(*iter)); //		Store it in taken_buffs
+					(*iter)->remove_ability(target); //		Apply remove_ability
 					target.applied_abilities.erase(iter); //Remove from applied_abilities
 				}
 			}
 			else
 			{
-				if(iter->is_buff()) // If is a buff/debuff
+				if((*iter)->is_buff()) // If is a buff/debuff
 				{
-					taken_buffs.push_back(*iter); //		Store it in taken_buffs
-					iter->remove_ability(target); //		Apply remove_ability
+					taken_buffs.push_back(*(*iter)); //		Store it in taken_buffs
+					(*iter)->remove_ability(target); //		Apply remove_ability
 					target.applied_abilities.erase(iter); //Remove from applied_abilities
 				};
 			}
@@ -387,9 +387,9 @@ public:
 	void initialize_effect(Unit & caster, Unit & target)
 	{
 		for(auto iterator = target.abilities.begin(); iterator != target.abilities.end(); ++iterator)
-			if(iterator->get_return_value() != 1)
+			if((*iterator)->get_return_value() != 1)
 			{
-				removed_abilities.push_back(*iterator); //			Put ability into temporary storage
+				removed_abilities.push_back(*(*iterator)); //			Put ability into temporary storage
 				target.abilities.erase(iterator); //				Remove ability from target
 			}
 	}
@@ -397,7 +397,7 @@ public:
 	void remove_effect(Unit & caster, Unit & target)
 	{
 		for(auto iterator = removed_abilities.begin(); iterator != removed_abilities.end(); ++iterator)
-			target.abilities.push_back(*iterator);
+			target.abilities.push_back(&(*iterator));
 		removed_abilities.clear();
 	}
 
@@ -497,4 +497,37 @@ public:
 	{
 		target.modify_weapon_skill(target.weapon.get_type(), -value);
 	}
+};
+
+class Passive_Ability_Affect:public Effect //			Removes temporary all passive abilities
+{
+public:
+	Passive_Ability_Affect(int duration, double value):Effect(duration, value) 
+	{
+		if(duration == 0) // Must not be instant
+			duration++;
+		positive = false;
+	};
+
+	void initialize_effect(Unit & caster, Unit & target)
+	{
+		for(auto iter = target.passive_abilities.begin(); iter != target.passive_abilities.end(); ++iter)
+		{
+			iter->remove_ability(target);
+			passive_abilities_disabled.push_back(*iter);
+			target.passive_abilities.erase(iter);
+		}
+	}
+
+	void remove_effect(Unit & caster, Unit & target)
+	{
+		for(auto iter = passive_abilities_disabled.begin(); iter != passive_abilities_disabled.end(); ++iter)
+		{
+			iter->initialize_ability(target);
+			target.passive_abilities.push_back(*iter);
+			passive_abilities_disabled.erase(iter);
+		}
+	}
+private:
+	vector <Ability_Passive> passive_abilities_disabled; //		Storage for removed abilities
 };

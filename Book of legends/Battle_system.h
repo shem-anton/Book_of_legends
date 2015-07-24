@@ -169,6 +169,7 @@ public:
 
 	// Methods of a class:
 
+	Unit(){};
 	Ability_Active &choose_ability(Battle &); //			Describes the way bot choose ability from the list in battle, has to be redefined for player in Hero class
 	Unit &choose_target_for_ability(Battle &, Ability_Active &); //			Describes the way bot choose target for ability in battle, has to be redefined for player in Hero class
 
@@ -176,8 +177,9 @@ public:
 
 	//Use of other classes:
 
-	vector <Ability_Active> abilities; //			List of abilities of a unit
-	vector <Ability_Active> applied_abilities; //	List of active abilities, applied on a unit
+	vector <Ability_Active*> abilities; //			List of abilities of a unit
+	vector <Ability_Active*> applied_abilities; //	List of active abilities, applied to a unit
+	vector <Ability_Passive> passive_abilities;//	List of passive abilities, applied to a unit
 	Weapon weapon; //								Weapon unit is carrying
 	Armor armor; //									Armor unit is wearing
 	vector <Artifact> artifacts; //					List of artifacts unit is carryings
@@ -205,9 +207,11 @@ private:
 class Ability_Passive: public Ability
 {
 public:
-	void obtaining_ability(Unit*){}; //				Method, applied when obtainig abiity
-	void discarding_ability(Unit*){}; //			Method, applied when discarding ability
+	bool operator==(Ability_Passive);
+	void initialize_ability(Unit&); //				Method, applied when obtainig abiity
+	void remove_ability(Unit&); //					Method, applied when discarding ability
 private:
+	vector <Effect*> effects; //					Effects of particular ability
 };
 
 class Ability_Active: public Ability
@@ -236,7 +240,7 @@ private:
 	short actioncost; //							Amount of action points needed to use ability
 	char duration_counter; //						Counter of a current stage of the effect
 
-	vector <Effect> effects; //						Effects of particular ability
+	vector <Effect*> effects; //					Effects of particular ability
 	Unit *ability_caster; //						Stores caster after initialization\
 
 	int return_value; //							Uses to process special situations, can be changed in constructor ONLY. Zero by default

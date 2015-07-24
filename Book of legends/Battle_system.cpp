@@ -185,27 +185,27 @@ bool Ability_Active::is_instant()
 {
 	bool result = 1;
 	for(auto iter = effects.begin(); iter != effects.end(); ++iter)
-		result *= iter->is_instant();
+		result *= (*iter)->is_instant();
 	return result;
 }
 bool Ability_Active::is_buff()
 {
 	for(auto iter = effects.begin(); iter != effects.end(); ++iter)
-		if(iter->is_buff())
+		if((*iter)->is_buff())
 			return true;
 	return false;
 }
 bool Ability_Active::is_debuff()
 {
 	for(auto iter = effects.begin(); iter != effects.end(); ++iter)
-		if(!iter->is_buff())
+		if(!(*iter)->is_buff())
 			return true;
 	return false;
 }
 bool Ability_Active::expired()
 {
 	for(auto iter = effects.begin(); iter != effects.end(); ++iter)
-		if(!iter->expired(duration_counter))
+		if(!(*iter)->expired(duration_counter))
 			return false;
 	return true;
 }
@@ -218,7 +218,7 @@ void Ability_Active::operator++()
 int Ability_Active::initialize_ability(Unit & caster, Unit & target, int turn)
 {
 	for(auto iter = effects.begin(); iter != effects.end(); ++iter)
-		iter->initialize_effect(caster, target);
+		(*iter)->initialize_effect(caster, target);
 	duration_counter = turn;
 	*ability_caster = caster;
 	return return_value;
@@ -227,15 +227,15 @@ int Ability_Active::initialize_ability(Unit & caster, Unit & target, int turn)
 void Ability_Active::apply_ability(Unit & target)
 {
 	for(auto iter = effects.begin(); iter != effects.end(); ++iter)
-		if(iter->expired(duration_counter))
-			iter->apply_effect(*ability_caster, target);
+		if((*iter)->expired(duration_counter))
+			(*iter)->apply_effect(*ability_caster, target);
 	++duration_counter;
 }
 
 void Ability_Active::remove_ability(Unit & target)
 {
 	for(auto iter = effects.begin(); iter != effects.end(); ++iter)
-		iter->remove_effect(*ability_caster, target);
+		(*iter)->remove_effect(*ability_caster, target);
 }
 
 //Class Ability_Active methods end here.
@@ -268,6 +268,34 @@ int Attack::initialize_ability(Unit & caster, Unit & target, int turn)
 }
 
 //Class Attack methods end here:
+
+//Class Ability_Passive methods begin here.
+
+bool Ability_Passive::operator==(Ability_Passive other)
+{
+	for(auto iter1 = effects.begin(), iter2 = other.effects.begin(); iter1 != effects.end(); ++iter1, ++iter2)
+		if((*iter1) != (*iter2))
+			return false;
+	return true;
+}
+
+void Ability_Passive::initialize_ability(Unit & target)
+{
+	Unit caster;
+	for(auto iter = effects.begin(); iter != effects.end(); ++iter)
+		(*iter)->initialize_effect(caster, target); //				Initialize effects
+	target.passive_abilities.push_back((*this)); //					Add ability to vector
+}
+
+void Ability_Passive::remove_ability(Unit & target)
+{
+	Unit caster;
+	for(auto iter = effects.begin(); iter != effects.end(); ++iter)
+		(*iter)->remove_effect(caster, target); //					Remove effects
+	target.passive_abilities.erase(find(target.passive_abilities.begin(), target.passive_abilities.end(), (*this))); // Remove abiity from vector
+}
+
+//Class Ability_Passive methods end here.
 
 //Class Battle methods begin here:
 
@@ -368,10 +396,10 @@ int Battle::process_unit()
 
 	for(auto iterator = active_unit.applied_abilities.begin(); iterator != active_unit.applied_abilities.end(); ++iterator)
 	{
-		iterator->apply_ability(active_unit); //			Applying all the abilities
-		if(iterator->expired()) //							And if some ability was expired
+		(*iterator)->apply_ability(active_unit); //			Applying all the abilities
+		if((*iterator)->expired()) //							And if some ability was expired
 		{
-			iterator->remove_ability(active_unit);	//		Applying remove_ability and
+			(*iterator)->remove_ability(active_unit);	//		Applying remove_ability and
 			active_unit.applied_abilities.erase(iterator); //	Removing it from list of applied abilities
 		}
 	}
@@ -392,7 +420,7 @@ int Battle::process_unit()
 				special_situation = chosen_ability.initialize_ability(active_unit, ability_target); //	Initialize ability
 
 				if(!chosen_ability.is_instant())
-					ability_target.applied_abilities.push_back(chosen_ability); //						If not instant, place ability to applied abilities of a target
+					ability_target.applied_abilities.push_back(&chosen_ability); //						If not instant, place ability to applied abilities of a target
 			}
 			// Here are all checks for special situations
 		}

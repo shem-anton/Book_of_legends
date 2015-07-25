@@ -29,8 +29,5 @@
     <ClInclude Include="Battle_system.h">
       <Filter>Заголовочные файлы</Filter>
     </ClInclude>
-    <ClInclude Include="Item_system.h">
-      <Filter>Файлы исходного кода</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>

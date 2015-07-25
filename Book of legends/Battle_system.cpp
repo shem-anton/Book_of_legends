@@ -137,7 +137,87 @@ Unit & Unit::choose_target_for_ability(Battle & enviroment, Ability_Active & cho
 	return blank;
 }
 
+// Item methods:
+void Unit::equip_armor(Armor & armor_to_equip)
+{
+	if(armor.is_null())
+	{
+		armor = armor_to_equip;
+		if(!armor_to_equip.protection.is_null())
+			armor_to_equip.protection.initialize_ability(*this);
+		if(!armor_to_equip.armor_active_ability->is_null())
+			abilities.push_back(armor_to_equip.armor_active_ability);
+	}
+}
+void Unit::unequip_armor()
+{
+	if(!armor.is_null())
+	{
+		Armor nullarmor;
+		if(!armor.protection.is_null())
+			armor.protection.remove_ability(*this);
+		if(!armor.armor_active_ability->is_null())
+			abilities.erase(find(abilities.begin(), abilities.end(), armor.armor_active_ability));
+		armor = nullarmor;
+	}
+}
+void Unit::equip_weapon(Weapon & weapon_to_equip)
+{
+	if(weapon.is_null())
+		if((weapon_to_equip.is_twohanded() && shield.is_null()) || (!weapon_to_equip.is_twohanded() && !shield.is_twohanded()))
+		{
+			if(!weapon_to_equip.weapon_passive_ability.is_null())
+				weapon_to_equip.weapon_passive_ability.initialize_ability(*this);
+			if(!weapon_to_equip.weapon_active_ability->is_null())
+				abilities.push_back(weapon_to_equip.weapon_active_ability);
+			weapon = weapon_to_equip;
+		}
+}
+void Unit::unequip_weapon()
+{
+	Weapon nullweapon;
+	if(!weapon.weapon_passive_ability.is_null())
+		weapon.weapon_passive_ability.remove_ability(*this);
+	if(!weapon.weapon_active_ability->is_null())
+		abilities.erase(find(abilities.begin(), abilities.end(), weapon.weapon_active_ability));
+	weapon = nullweapon;
+}
+void Unit::equip_shield(Shield & shield_to_equip)
+{
+	if(shield.is_null())
+		if((shield_to_equip.is_twohanded() && weapon.is_null()) || (!shield_to_equip.is_twohanded() && !weapon.is_twohanded()))
+		{
+			if(!shield_to_equip.shield_passive_ability.is_null())
+				shield_to_equip.shield_passive_ability.initialize_ability(*this);
+			if(!shield_to_equip.shield_active_abilities.empty())
+				copy(shield_to_equip.shield_active_abilities.begin(), shield_to_equip.shield_active_abilities.end(), abilities.end());
+			shield = shield_to_equip;
+		}
+}
+void Unit::unequip_shield()
+{
+	Shield nullshield;
+	if(!shield.shield_passive_ability.is_null())
+		shield.shield_passive_ability.remove_ability(*this);
+	if(!shield.shield_active_abilities.empty())
+	{
+		auto iter = shield.shield_active_abilities.end();
+		--iter;
+		abilities.erase(find(abilities.begin(),abilities.end(),*(shield.shield_active_abilities.begin())),iter);
+	}
+	shield = nullshield;
+}
+
 //Class Unit methods end here.
+
+//Class Armor methods begin here.
+
+bool Armor::is_null()
+{
+	return protection.is_null() && armor_active_ability->is_null();
+}
+
+//Class Armor methods end here:
 
 //Class Hero methods begin here:
 
@@ -151,12 +231,23 @@ void Hero::show()
 
 //Class Weapon methods begin here:
 
+Weapon::Weapon():damage(0){}
 int Weapon::get_hit_modifier(){ return to_hit_modifier; }
 int Weapon::get_type(){ return type; }
 int Weapon::get_damage(){ return damage; }
 double Weapon::get_AP_modifier(){ return AP_modifier;};
+bool Weapon::is_null(){ return weapon_passive_ability.is_null() && weapon_active_ability->is_null() && damage == 0; }
+bool Weapon::is_twohanded(){ return twohanded; }
 
 //Class Weapon methods end here.
+
+//Class Shield methods begin here:
+
+Shield::Shield():twohanded(false){}
+bool Shield::is_null(){ return shield_passive_ability.is_null() && shield_active_abilities.empty(); }
+bool Shield::is_twohanded(){ return twohanded; }
+
+//Class Shield methods end here.
 
 //Class Ability_Active methods begin here:
 
@@ -209,6 +300,10 @@ bool Ability_Active::expired()
 			return false;
 	return true;
 }
+bool Ability_Active::is_null()
+{
+	return effects.empty();
+}
 
 void Ability_Active::operator++()
 {
@@ -244,6 +339,11 @@ void Ability_Active::remove_ability(Unit & target)
 
 Attack::Attack():Ability_Active(1){}
 
+bool Attack::is_null()
+{
+	return false;
+}
+
 int Attack::initialize_ability(Unit & caster, Unit & target, int turn)
 {
 	// Calculating apcost of this attack:
@@ -277,6 +377,11 @@ bool Ability_Passive::operator==(Ability_Passive other)
 		if((*iter1) != (*iter2))
 			return false;
 	return true;
+}
+
+bool Ability_Passive::is_null()
+{
+	return effects.empty(); 
 }
 
 void Ability_Passive::initialize_ability(Unit & target)

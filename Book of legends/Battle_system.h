@@ -25,12 +25,13 @@ class Ability_Passive;
 class Armor;
 class Artifact;
 class Attack;
-class Consumable_Item;
+class Disposable_Item;
 class Effect;
 class Hero;
 class Item;
 class Opponents;
 class Party;
+class Shield;
 class Unit;
 class Weapon;
 
@@ -76,6 +77,63 @@ private:
 	int value; //									It's for the game balance, I'm serious!				
 };
 
+class Ability_Passive: public Ability
+{
+public:
+	bool is_null(); //								Shows whether this ability do something
+	//Ability_Passive & operator=(Ability_Passive &){};
+	bool operator==(Ability_Passive);
+	void initialize_ability(Unit&); //				Method, applied when obtainig abiity
+	void remove_ability(Unit&); //					Method, applied when discarding ability
+private:
+	vector <Effect*> effects; //					Effects of particular ability
+};
+
+class Ability_Active: public Ability
+{
+public:
+	Ability_Active(int return_value = 0):return_value(return_value){}; //							Constructor
+
+	int get_manacost();
+	int get_actioncost();
+	int get_duration_counter();
+	int get_return_value();
+	Unit & get_ability_caster();
+
+	bool is_null(); //								Shows whether this ability do something
+	bool is_instant(); //							Shows whether all the effects are instant
+	bool is_buff(); //								Shows whether ability contains buff
+	bool is_debuff(); //							Shows whether ability contains debuff
+	bool expired(); //								True if ability should be removed
+
+	void operator++(); //							Adds one to duration counter
+	//Ability_Active & operator=(Ability_Active &){};
+
+	int initialize_ability(Unit &, Unit &, int turn = 0); //Used when ability is applied first time, begins with duration_counter = turn
+	void apply_ability(Unit &); //					Used every turn in battle
+	void remove_ability(Unit &); //					Used when ability is removed
+private:
+	short manacost; //								Amount of mana needed to use ability
+	short actioncost; //							Amount of action points needed to use ability
+	char duration_counter; //						Counter of a current stage of the effect
+
+	vector <Effect*> effects; //					Effects of particular ability
+	Unit *ability_caster; //						Stores caster after initialization\
+
+	int return_value; //							Uses to process special situations, can be changed in constructor ONLY. Zero by default
+				   	  //							If return value is equal to 1, this abillity is Attack
+					  //							If return value is equal to 2, this ability is Retreat
+};
+
+class Attack:public Ability_Active
+{
+public:
+	Attack();
+	bool is_null();
+	int initialize_ability(Unit &, Unit &, int);
+private:
+};
+
 class Item
 {
 public:
@@ -86,29 +144,51 @@ private:
 	int value; //									It's for the game balance, I'm serious!
 
 	int cost; //									Cost of item in gold pieces
-	vector <Ability*> abilities; //					List of abilities of an item
 };
 
-class Consumable_Item: public Item
+class Shield: public Item
 {
 public:
+	Shield();
+	//Shield & operator=(Shield &){};
+	bool is_twohanded();
+	bool is_null();
+	Ability_Passive shield_passive_ability;
+	vector <Ability_Active *> shield_active_abilities;
 private:
-	char capacity; //								Amount of items that can be placed in one stot
+	bool twohanded;
 };
 
 class Weapon: public Item
 {
 public:
+	Weapon();
 	int get_hit_modifier();
 	int get_type();
 	int get_damage();
 	double get_AP_modifier();
+	bool is_null();
+	bool is_twohanded();
+	//Weapon & operator=(Weapon &){};
+
+	Ability_Passive weapon_passive_ability;
+	Ability_Active *weapon_active_ability;
 private:
 	char to_hit_modifier; //						Displays the inprovement of to-hit chance while hitting with this weapon
-	short damage; //									Damage, done by attack with this weapon
+	short damage; //								Damage, done by attack with this weapon
 	double AP_modifier; //							Modifyer of action points needed to hit with this weapon
 	bool twohanded; //								Displays whether the second hand can be used
 	int type; //									Type of a weapon, look it up in a special table
+};
+
+class Disposable_Item: public Item
+{
+public:
+	//Disposable_Item & operator=(Disposable_Item &){};
+private:
+	Ability_Active *disposable_ability;
+	int count; //									Number of items that are 
+	int capacity; //								Amount of items that can be placed in one slot
 };
 
 class Artifact: public Item
@@ -121,8 +201,11 @@ private:
 class Armor: public Item
 {
 public:
-private:
-	Ability_Passive *protection; //					Passive ability of protecting the wearer
+	//Armor & operator=(Armor &){};
+	Armor(){};
+	bool is_null(); //								Shows whether armor do something
+	Ability_Passive protection; //					Passive ability of protecting the wearer
+	Ability_Active *armor_active_ability; //		Active ablility of armor
 };
 
 class Unit
@@ -169,9 +252,18 @@ public:
 
 	// Methods of a class:
 
+	//Unit & operator=(Unit &){};
 	Unit(){};
 	Ability_Active &choose_ability(Battle &); //			Describes the way bot choose ability from the list in battle, has to be redefined for player in Hero class
 	Unit &choose_target_for_ability(Battle &, Ability_Active &); //			Describes the way bot choose target for ability in battle, has to be redefined for player in Hero class
+
+	// Item methods(move item to appropriate slot, initialize passive abilities if needed, move active abilities to vector "abilities" if needed):
+	void equip_armor(Armor &);
+	void unequip_armor();
+	void equip_weapon(Weapon &);
+	void unequip_weapon();
+	void equip_shield(Shield &);
+	void unequip_shield();
 
 	void show();
 
@@ -181,9 +273,11 @@ public:
 	vector <Ability_Active*> applied_abilities; //	List of active abilities, applied to a unit
 	vector <Ability_Passive> passive_abilities;//	List of passive abilities, applied to a unit
 	Weapon weapon; //								Weapon unit is carrying
+	Shield shield; //								Shield unit is carrying
 	Armor armor; //									Armor unit is wearing
 	vector <Artifact> artifacts; //					List of artifacts unit is carryings
-	vector <Consumable_Item> consumables; //		List of consumable items
+	vector <Disposable_Item> disposables; //		List of consumable items
+	char slots_for_disposables; //					Number of slots for disposables that can be used by unit
 
 private:
 	//Stats of a unit:
@@ -204,62 +298,11 @@ private:
 	bool dead; //									Shows whether unit is dead in particular combat
 };
 
-class Ability_Passive: public Ability
-{
-public:
-	bool operator==(Ability_Passive);
-	void initialize_ability(Unit&); //				Method, applied when obtainig abiity
-	void remove_ability(Unit&); //					Method, applied when discarding ability
-private:
-	vector <Effect*> effects; //					Effects of particular ability
-};
-
-class Ability_Active: public Ability
-{
-public:
-	Ability_Active(int return_value = 0):return_value(return_value){}; //							Constructor
-
-	int get_manacost();
-	int get_actioncost();
-	int get_duration_counter();
-	int get_return_value();
-	Unit & get_ability_caster();
-
-	bool is_instant(); //							Shows whether all the effects are instant
-	bool is_buff(); //								Shows whether ability contains buff
-	bool is_debuff(); //							Shows whether ability contains debuff
-	bool expired(); //								True if ability should be removed
-
-	void operator++(); //							Adds one to duration counter
-
-	int initialize_ability(Unit &, Unit &, int turn = 0); //Used when ability is applied first time, begins with duration_counter = turn
-	void apply_ability(Unit &); //					Used every turn in battle
-	void remove_ability(Unit &); //					Used when ability is removed
-private:
-	short manacost; //								Amount of mana needed to use ability
-	short actioncost; //							Amount of action points needed to use ability
-	char duration_counter; //						Counter of a current stage of the effect
-
-	vector <Effect*> effects; //					Effects of particular ability
-	Unit *ability_caster; //						Stores caster after initialization\
-
-	int return_value; //							Uses to process special situations, can be changed in constructor ONLY. Zero by default
-				   	  //							If return value is equal to 1, this abillity is Attack
-					  //							If return value is equal to 2, this ability is Retreat
-};
-
-class Attack:public Ability_Active
-{
-public:
-	Attack();
-	int initialize_ability(Unit &, Unit &, int);
-private:
-};
-
 class Hero: public Unit
 {
 public:
 	void show();
+	//Hero & operator=(Hero &){};
 private:
 	// Specific PC attributes
 	char alignment; //								Reflects alignment of a character
@@ -267,7 +310,7 @@ private:
 	int experience; //								Amount of XP gained
 	char influence; //								Reflects the influence of the character on others
 
-	vector <Item> loot; //							Stores hordes of loot
+	vector <Item *> loot; //						Stores hordes of loot
 };
 
 class Party
